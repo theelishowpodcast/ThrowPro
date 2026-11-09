@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#f5efe6">
+    
+    <!-- Inline Web App Manifest -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Light Control Panel","short_name":"LightControl","start_url":".","display":"standalone","orientation":"portrait","background_color":"#f5efe6","theme_color":"#f5efe6"}'>
+    
+    <title>Light Control</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5efe6;
+            color: #3d332a;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Top Header Bar */
+        .app-header {
+            padding: 18px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5dec9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(61, 51, 42, 0.05);
+        }
+        .header-title-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .app-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+            color: #3d332a;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background-color: #e8dfd1;
+            color: #7a6e60;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .status-badge.connected {
+            background-color: #d1e8d5;
+            color: #1e5e2a;
+        }
+        .status-badge.pairing {
+            background-color: #f7e8c8;
+            color: #7a5a10;
+        }
+
+        .btn-kiosk {
+            background: #e8dfd1;
+            border: 1px solid #d4c7b5;
+            color: #3d332a;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-kiosk:active {
+            transform: scale(0.95);
+        }
+
+        /* Main Container */
+        .app-body {
+            padding: 20px;
+            max-width: 420px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* Dashboard Cards */
+        .card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 20px 16px;
+            box-shadow: 0 4px 12px rgba(61, 51, 42, 0.05);
+            border: 1px solid #e5dec9;
+        }
+        .card-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #8c7d70;
+            margin-bottom: 16px;
+        }
+
+        /* Buttons Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .btn-action {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            border: none;
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: transform 0.1s, box-shadow 0.1s, background 0.2s;
+        }
+        .btn-action:active {
+            transform: scale(0.96);
+        }
+        
+        .btn-on {
+            background: linear-gradient(135deg, #6ba875, #4c8255);
+            box-shadow: 0 8px 24px rgba(76, 130, 85, 0.35);
+        }
+        .btn-off {
+            background: linear-gradient(135deg, #cb5a4b, #a83d30);
+            box-shadow: 0 8px 24px rgba(168, 61, 48, 0.35);
+        }
+
+        .transcript-box {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #52473c;
+            text-align: center;
+            background: #f7f3ed;
+            border: 1px solid #e5dec9;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        /* Connection Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(61, 51, 42, 0.7);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 999;
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background: #ffffff;
+            border: 1px solid #e5dec9;
+            border-radius: 20px;
+            padding: 28px 24px;
+            text-align: center;
+            width: 100%;
+            max-width: 340px;
+            box-shadow: 0 20px 25px -5px rgba(61, 51, 42, 0.2);
+            color: #3d332a;
+        }
+        .modal-icon {
+            font-size: 44px;
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+        .modal-icon.pulse {
+            animation: pulse-ring 1.5s infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(163, 122, 71, 0.2);
+            border-radius: 50%;
+            border-top-color: #a37a47;
+            animation: spin 0.8s linear infinite;
+            margin: 12px auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #3d332a;
+        }
+        .modal-subtitle {
+            font-size: 13px;
+            color: #7a6e60;
+            margin: 0 0 20px 0;
+            line-height: 1.4;
+        }
+
+        .btn-connect {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            background: #a37a47;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(163, 122, 71, 0.35);
+            touch-action: manipulation;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .btn-connect:active { transform: scale(0.97); }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Connection Modal Window -->
+    <div id="connectModal" class="modal-overlay">
+        <div class="modal-content">
+            <div id="modalIcon" class="modal-icon">📡</div>
+            <h2 id="modalTitle" class="modal-title">Light Control Disconnected</h2>
+            <p id="modalStatus" class="modal-subtitle">Tap below to pair with your Throw Pro via Bluetooth.</p>
+            
+            <div id="pairingSpinner" class="spinner hidden"></div>
+
+            <button id="connectBtn" class="btn-connect" onclick="connectBLE()">Connect to Throw Pro</button>
+        </div>
+    </div>
+
+    <!-- Main App Header -->
+    <div class="app-header">
+        <div class="header-title-group">
+            <h1 class="app-title">Light Control Panel</h1>
+            <span id="statusBadge" class="status-badge">Disconnected</span>
+        </div>
+        <button class="btn-kiosk" onclick="toggleKiosk()">⛶ Fullscreen</button>
+    </div>
+
+    <!-- Main App Body -->
+    <div class="app-body">
+        <div class="card" style="text-align: center;">
+            <div class="card-title" style="text-align: left;">Power Controls</div>
+            
+            <!-- ON and OFF Buttons Grid -->
+            <div class="grid-2">
+                <button class="btn-action btn-on" onclick="sendLightCommand('Lightson')">ON</button>
+                <button class="btn-action btn-off" onclick="sendLightCommand('Lightsoff')">OFF</button>
+            </div>
+
+            <!-- Status Feedback Display -->
+            <div id="executionStatus" class="transcript-box">Ready</div>
+        </div>
+    </div>
+
+    <script>
+        let bluetoothDevice;
+        let rxCharacteristic;
+
+        const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+        const RX_CHARACTERISTIC_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+        const TX_CHARACTERISTIC_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+
+        function toggleKiosk() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error enabling kiosk mode: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        async function sendLightCommand(command) {
+            const statusBox = document.getElementById('executionStatus');
+            statusBox.innerText = `Sending: ${command}...`;
+            
+            await sendData(command);
+            
+            statusBox.innerText = `Sent: ${command}`;
+            setTimeout(() => {
+                statusBox.innerText = "Ready";
+            }, 1500);
+        }
+
+        async function connectBLE() {
+            const modalTitle = document.getElementById('modalTitle');
+            const modalStatus = document.getElementById('modalStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const statusBadge = document.getElementById('statusBadge');
+            const modalIcon = document.getElementById('modalIcon');
+            const spinner = document.getElementById('pairingSpinner');
+
+            try {
+                connectBtn.classList.add('hidden');
+                spinner.classList.remove('hidden');
+                modalIcon.classList.add('pulse');
+                modalTitle.innerText = "Searching for Throw Pro...";
+                modalStatus.innerText = "Select 'Throw Pro' in the browser prompt to complete pairing.";
+                
+                statusBadge.innerText = "Pairing...";
+                statusBadge.classList.remove('connected');
+                statusBadge.classList.add('pairing');
+
+                bluetoothDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'Throw Pro' }],
+                    optionalServices: [UART_SERVICE_UUID]
+                });
+
+                modalTitle.innerText = "Connecting...";
+                modalStatus.innerText = "Establishing secure connection...";
+
+                const server = await bluetoothDevice.gatt.connect();
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                
+                rxCharacteristic = await service.getCharacteristic(RX_CHARACTERISTIC_UUID);
+
+                const txCharacteristic = await service.getCharacteristic(TX_CHARACTERISTIC_UUID);
+                await txCharacteristic.startNotifications();
+                txCharacteristic.addEventListener('characteristicvaluechanged', handleBluetoothNotifications);
+
+                if ("vibrate" in navigator) {
+                    navigator.vibrate(200);
+                }
+
+                statusBadge.innerText = "Connected";
+                statusBadge.classList.remove('pairing');
+                statusBadge.classList.add('connected');
+                document.getElementById('connectModal').classList.add('hidden');
+
+                bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+            } catch (error) {
+                console.error("Connection failed:", error);
+                
+                spinner.classList.add('hidden');
+                modalIcon.classList.remove('pulse');
+                modalTitle.innerText = "Connection Failed";
+                
+                if (error.name === 'NotFoundError') {
+                    modalStatus.innerText = "Pairing canceled or no device selected. Please try again.";
+                } else {
+                    modalStatus.innerText = "Could not connect. Ensure device is in range and try again.";
+                }
+
+                connectBtn.innerText = "Retry Connection";
+                connectBtn.classList.remove('hidden');
+
+                statusBadge.innerText = "Disconnected";
+                statusBadge.classList.remove('pairing', 'connected');
+            }
+        }
+
+        function handleBluetoothNotifications(event) {
+            const value = new TextDecoder().decode(event.target.value).trim();
+            console.log("Received notification:", value);
+        }
+
+        async function sendData(command) {
+            if (!rxCharacteristic) {
+                onDisconnected();
+                return;
+            }
+            try {
+                const encoder = new TextEncoder();
+                await rxCharacteristic.writeValue(encoder.encode(command));
+            } catch (error) {
+                console.error("Error sending command:", error);
+            }
+        }
+
+        function onDisconnected() {
+            const statusBadge = document.getElementById('statusBadge');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalStatus = document.getElementById('modalStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            const modalIcon = document.getElementById('modalIcon');
+            const spinner = document.getElementById('pairingSpinner');
+
+            statusBadge.innerText = "Disconnected";
+            statusBadge.classList.remove('connected', 'pairing');
+            
+            modalIcon.classList.remove('pulse');
+            spinner.classList.add('hidden');
+            modalTitle.innerText = "Connection Lost";
+            modalStatus.innerText = "The connection was interrupted. Please reconnect.";
+            
+            connectBtn.innerText = "Reconnect";
+            connectBtn.classList.remove('hidden');
+            document.getElementById('connectModal').classList.remove('hidden');
+            
+            rxCharacteristic = null;
+        }
+    </script>
+</body>
+</html>
